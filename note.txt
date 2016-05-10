@@ -1,0 +1,8 @@
+1. 使用AngularStrap组件，包括navbar、alert($alert)
+2. ng插件resource访问api
+2.1 RESTful架构：对于资源的表现层状态转化
+2.2 link: http://www.ruanyifeng.com/blog/2011/09/restful
+2.3 $ngResource .get() .save() .query() .remove() .delete()
+2.4 link: http://my.oschina.net/u/1992917/blog/407150?fromerr=4dYTz5Lw
+3. ng插件messages用于表单验证提示
+3.1 ngMessages包含所有$error错误信息，ngMessage显示对应错误类型的信息
