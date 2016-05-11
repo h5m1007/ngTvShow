@@ -146,6 +146,7 @@ passport.deserializeUser(function(id, done){
 	});
 });
 
+
 app.get('/api/shows', function(req, res, next){
 	var query = Show.find();
 	if(req.query.genre){
