@@ -8,10 +8,14 @@ var express = require('express')
   , logger = require('morgan') // 用来输出用户请求日志
   , bodyParser = require('body-parser') // 请求内容解析中间件
   , mongoose = require('mongoose')
-  , bcrypt = require('bcryptjs')
+  , bcrypt = require('bcryptjs') // 加密(哈希和盐化)
   , async = require('async')
-  , xml2js = require('xml2js')
-  , _ = require('lodash');
+  , xml2js = require('xml2js') // xml格式转化javascript
+  , _ = require('lodash')
+  , cookieParser = require('cookie-parser')
+  , session = require('express-session')
+  , passport = require('passport') // 以某种策略方式验证请求
+  , LocalStrategy = require('passport-local').Strategy; // 应用本地验证策略
 
 var showSchema = new mongoose.Schema({
 	// 存储数据库模型架构
@@ -69,7 +73,7 @@ userSchema.methods.comparePassword = function(candidatePassword, cb){
 var User = mongoose.model('User', userSchema);
 var Show = mongoose.model('Show', showSchema);
 
-// mongoose.connect('localhost');
+mongoose.connect('localhost');
 
 var app = express();
 
@@ -79,9 +83,13 @@ app.set('port', process.env.PORT || 3000);
 // 定义日志和输出级别
 app.use(logger('dev'));
 
-// 定义数据解析器
+// 加载各中间件
 app.use(bodyParser.json());
-app.use(bodyParser.urlencoded());
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(cookieParser());
+app.use(session({ secret: 'keyboard cat' }));
+app.use(passport.initialize());
+app.use(passport.session());
 
 app.use(function(err, req, res, next){
 	console.error(err.stack);
@@ -90,8 +98,53 @@ app.use(function(err, req, res, next){
 	});
 });
 
+app.use(function(req, res, next){
+	// 一旦user通过验证 会生成新cookie
+	if(req.user){
+		res.cookie('user', JSON.stringify(req.user));
+	}
+	next();
+});
+
 // 定义静态文件目录
 app.use(express.static(path.join(__dirname, 'public')));
+
+function ensureAuthenticated(req, res, next){
+	if(req.isAuthenticated()) next();
+	else res.send(401);
+}
+
+passport.use(new LocalStrategy({ usernameField: 'email' }, function(email, password, done){
+	// 自定义认证字段 对应页面上input且name为email
+	User.findOne({ email: email }, function(err, user){
+		// .findOne(查询条件, callback) --> mongoDB 打开数据库查询一条数据
+		// 从数据库User中，以{email: email}为查询条件
+		// passport自身不处理验证
+		// 所有验证由callback自行设置 --> 验证回调
+		// 验证回调返回验证结果，由done()完成
+		if(err) return done(err); // <-- 系统级异常如数据库查询出错
+		if(!user) return done(null, false); // <-- 验证不通过的返回
+		user.comparePassword(password, function(err, isMatch){
+			if(err) return done(err);
+			if(isMatch) return done(null, user); // <-- 验证通过的返回
+			return done(null, false);
+		});
+	});
+}));
+
+passport.serializeUser(function(user, done){
+	// 把user.id序列化至session即sessionID
+	// 作为凭证存储至cookie
+	done(null, user.id);
+});
+
+passport.deserializeUser(function(id, done){
+	// 从session反序列化 id为sessionID
+	User.findById(id, function(err, user){
+		// 在User数据库查询id 并存储至req.user
+		done(err, user);
+	});
+});
 
 app.get('/api/shows', function(req, res, next){
 	var query = Show.find();
@@ -120,6 +173,7 @@ app.get('*', function(req, res){
 });
 
 app.post('/api/shows', function(req, res, next){
+	console.log("for test~");
 	var apiKey = '9EF1D1E7D28FDA0B'; // apply the key from the TVDB
 	var parser = xml2js.Parser({
 		// xml 转 javascript
@@ -131,6 +185,7 @@ app.post('/api/shows', function(req, res, next){
 		.replace(/ /g, '_')
 		.replace(/[^\w-] + /g, '');
 	async.waterfall([
+		// console.log("for test~");
 		// 多个函数依次执行，且前一个输出为后一个输入
 		// 某个函数出错，后面函数将不会被执行
 		function(callback){
@@ -203,6 +258,27 @@ app.post('/api/shows', function(req, res, next){
 			res.send(200);
 		});
 	});
+});
+
+app.post('/api/login', passport.authenticate('local'), function(req, res){
+	res.cookie('user', JSON.stringify(req.user));
+	res.send(req.user);
+});
+
+app.post('/api/signup', function(req, res, next){
+	var user = new User({
+		email: req.body.email,
+		password: req.body.password
+	});
+	user.save(function(err){
+		if(err) return next(err);
+		res.send(200);
+	});
+});
+
+app.get('/api/logout', function(req, res, next){
+	req.logout();
+	res.send(200);
 });
 
 // 启动及端口
