@@ -8,14 +8,20 @@ var express = require('express')
   , logger = require('morgan') // 用来输出用户请求日志
   , bodyParser = require('body-parser') // 请求内容解析中间件
   , mongoose = require('mongoose')
+  // mongoose可把MongoDB(文档型数据库)的文档转化为js对象
   , bcrypt = require('bcryptjs') // 加密(哈希和盐化)
   , async = require('async')
+  , request = require('request')
   , xml2js = require('xml2js') // xml格式转化javascript
   , _ = require('lodash')
   , cookieParser = require('cookie-parser')
   , session = require('express-session')
   , passport = require('passport') // 以某种策略方式验证请求
-  , LocalStrategy = require('passport-local').Strategy; // 应用本地验证策略
+  , LocalStrategy = require('passport-local').Strategy // 应用本地验证策略
+  , agenda = require('agenda')({ db: { address: 'localhost:27017/test' } })
+  // agenda为nodejs任务调度
+  , sugar = require('sugar') // 对javascript拓展
+  , nodemailer = require('nodemailer'); // nodejs邮件发送组件;
 
 var showSchema = new mongoose.Schema({
 	// 存储数据库模型架构
@@ -175,7 +181,7 @@ app.get('*', function(req, res){
 
 app.post('/api/shows', function(req, res, next){
 	console.log("for test~");
-	var apiKey = '9EF1D1E7D28FDA0B'; // apply the key from the TVDB
+	var apiKey = 'AAEAD85F45D951E9'; // apply the key from the TVDB
 	var parser = xml2js.Parser({
 		// xml 转 javascript
 		explicitArray: false,
@@ -186,7 +192,6 @@ app.post('/api/shows', function(req, res, next){
 		.replace(/ /g, '_')
 		.replace(/[^\w-] + /g, '');
 	async.waterfall([
-		// console.log("for test~");
 		// 多个函数依次执行，且前一个输出为后一个输入
 		// 某个函数出错，后面函数将不会被执行
 		function(callback){
@@ -261,6 +266,30 @@ app.post('/api/shows', function(req, res, next){
 	});
 });
 
+app.post('/api/subscribe', ensureAuthenticated, function(req, res, next){
+	// 订阅
+	Show.findById(req.body.showId, function(err, show){
+		if(err) return nex(err);
+		show.subscribers.push(req.user.id);
+		show.save(function(err){
+			if(err) return next(err);
+			res.send(200);
+		});
+	});
+});
+
+app.post('/api/unsubscribe', ensureAuthenticated, function(req, res, next){
+	Show.findById(req.body.showId, function(err, show){
+		if(err) return next(err);
+		var index = show.subscribers.indexOf(req.user.id);
+		show.subscribers.splice(index, 1);
+		show.save(function(err){
+			if(err) return next(err);
+			res.send(200);
+		});
+	});
+});
+
 app.post('/api/login', passport.authenticate('local'), function(req, res){
 	res.cookie('user', JSON.stringify(req.user));
 	res.send(req.user);
@@ -280,6 +309,49 @@ app.post('/api/signup', function(req, res, next){
 app.get('/api/logout', function(req, res, next){
 	req.logout();
 	res.send(200);
+});
+
+agenda.define('send email alert', function(job, done){
+	// 创建任务
+	Show.findOne({ name: job.attrs.data }).populate('subscribers').exec(function(err, show){
+		var emails = show.subscribers.map(function(user){
+			return user.email;
+		});
+
+		var upcomingEpisode = show.episodes.filter(function(episode){
+			return new Date(episode.firstAired) > new Date();
+		})[0];
+
+		var smtpTransport = nodemailer.createTransport('SMTP', {
+			service: 'SendGrid',
+			auth: { user: 'hslogin', pass: 'hspassword00' }
+		});
+
+		var mailOptions = {
+			from: 'Fred Foo ✔ <foo@blurdybloop.com>',
+			to: emails.join(','),
+			subject: show.name + ' is starting soon!',
+			text: show.name + ' starts in less than 2 hours on ' +
+				show.network + '.\n\n' + 'Episode ' + upcomingEpisode.episodeNumber +
+				' overview\n\n' + upcomingEpisode.overview
+		};
+
+		smtpTransport.sendMail(mailOptions, function(error, response){
+			console.log('Message sent: ' + response.message);
+			smtpTransport.close();
+			done();
+		});
+	});
+});
+
+agenda.start();
+
+agenda.on('start', function(job){
+	console.log("Job %s starting", job.attrs.name);
+});
+
+agenda.on('complete', function(job){
+	console.log("Job %s finished", job.attrs.name);
 });
 
 // 启动及端口
