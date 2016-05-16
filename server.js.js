@@ -18,10 +18,16 @@ var express = require('express')
   , session = require('express-session')
   , passport = require('passport') // 以某种策略方式验证请求
   , LocalStrategy = require('passport-local').Strategy // 应用本地验证策略
+  // , agenda = require('agenda')({ db: { address: 'mongodb://h5m1007:qq355795973@ds019491.mlab.com:19491/tvshowdb' } })
   , agenda = require('agenda')({ db: { address: 'localhost:27017/test' } })
   // agenda为nodejs任务调度
   , sugar = require('sugar') // 对javascript拓展
-  , nodemailer = require('nodemailer'); // nodejs邮件发送组件;
+  , nodemailer = require('nodemailer') // nodejs邮件发送组件
+  , csso = require('gulp-csso') // 压缩css
+  , uglify = require('gulp-uglify') // 压缩js
+  , concat = require('gulp-concat') // 文件合并并为引用的url添加版本号,以清除cache
+  , templateCache = require('gulp-angular-templatecache')
+  , compress = require('compression');
 
 var showSchema = new mongoose.Schema({
 	// 存储数据库模型架构
@@ -79,12 +85,16 @@ userSchema.methods.comparePassword = function(candidatePassword, cb){
 var User = mongoose.model('User', userSchema);
 var Show = mongoose.model('Show', showSchema);
 
+// mongoose.connect('mongodb://h5m1007:qq355795973@ds019491.mlab.com:19491/tvshowdb');
 mongoose.connect('localhost');
 
 var app = express();
 
 // 环境变量
 app.set('port', process.env.PORT || 3000);
+
+// 请求压缩
+app.use(compress());
 
 // 定义日志和输出级别
 app.use(logger('dev'));
@@ -113,7 +123,7 @@ app.use(function(req, res, next){
 });
 
 // 定义静态文件目录
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public'), { maxAge: 86400000 }));
 
 function ensureAuthenticated(req, res, next){
 	if(req.isAuthenticated()) next();
@@ -261,6 +271,12 @@ app.post('/api/shows', function(req, res, next){
 				}
 				return next(err);
 			}
+
+			var alertDate = Date.create('Next ' + show.airsDayOfWeek + ' at ' + show.airsTime).rewind({ hour: 2 });
+			// sugar.js -- 拓展Date输出格式.create(格式)
+			// .rewind()设置输出过去的时间
+			agenda.schedule(alertDate, 'send email alert', show.name).repeatEvery('1 week');
+
 			res.send(200);
 		});
 	});
@@ -344,7 +360,7 @@ agenda.define('send email alert', function(job, done){
 	});
 });
 
-agenda.start();
+// agenda.start();
 
 agenda.on('start', function(job){
 	console.log("Job %s starting", job.attrs.name);
