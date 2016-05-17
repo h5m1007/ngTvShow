@@ -6,15 +6,19 @@
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>ShowTrackr</title>
+	<link href='http://fonts.useso.com/css?family=Roboto|Montserrat:400,700|Open+Sans:400,300,700' rel='stylesheet' type='text/css'>
+  	<link href="//cdn.jsdelivr.net/ionicons/1.4.1/css/ionicons.min.css" rel="stylesheet">
 	<link rel="icon" type="image/png" href="favicon.png">
+	<link rel="stylesheet" href="stylesheets/animate.css">
 	<link rel="stylesheet" href="stylesheets/style.css">
 </head>
 <body>
 	<div ng-controller="NavbarCtrl" class="navbar navbar-default navbar-static-top" role="navigation" bs-navbar>
 		<div class="navbar-header">
 			<a href="/" class="navbar-brand">
-				<span class="glyphicon glyphicon-film"></span>
-				show<strong>Trackr</strong>
+				<span>
+					show<strong>Trackr</strong>
+				</span>
 			</a>
 		</div>
 		<ul class="nav navbar-nav">
@@ -30,7 +34,8 @@
 			<li><a href="#" ng-click="logout()">Logout</a></li>
 		</ul>
 	</div>
-	<div ng-view></div>
+
+	<div ng-view class="{{pageClass}}"></div>
 	
 	<script src="app.min.js"></script>
 	<script src="templates.js"></script>

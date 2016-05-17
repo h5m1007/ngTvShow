@@ -6,4 +6,11 @@ angular.module('MyApp')
 				password: $scope.password
 			});
 		};
+		$scope.facebookLogin = function(){
+			Auth.facebookLogin();
+		};
+		$scope.googleLogin = function(){
+			Auth.googleLogin();
+		};
+		$scope.pageClass = 'fadeZoom';
 	}]);
