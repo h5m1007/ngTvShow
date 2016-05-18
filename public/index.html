@@ -31,7 +31,7 @@
 		</ul>
 		<ul class="nav navbar-nav pull-right" ng-if="currentUser">
 			<li class="navbar-text" ng-bind="currentUser.email"></li>
-			<li><a href="#" ng-click="logout()">Logout</a></li>
+			<li><a href="javascript:void(0)" ng-click="logout()">Logout</a></li>
 		</ul>
 	</div>
 
@@ -60,6 +60,8 @@
 	<script src="controllers/signup.js"></script>
 	<script src="controllers/login.js"></script>
 	<script src="services/auth.js"></script>
-	<script src="controllers/navbar.js"></script> -->
+	<script src="controllers/navbar.js"></script>
+	<script src="directives/uniqueEmail.js"></script> -->
+
 </body>
 </html>

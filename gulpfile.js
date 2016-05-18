@@ -28,7 +28,9 @@ gulp.task('compress', function(){
 		'public/directives/*.js'
 		])
 		.pipe(concat('app.min.js')) // 文件合并输出名
-		.pipe(uglify()) // 压缩js
+		.pipe(uglify().on('error', function(e){
+			console.log(e);
+		})) // 压缩js
 		.pipe(gulp.dest('public')); // 文件合并输出存放目录
 });
 

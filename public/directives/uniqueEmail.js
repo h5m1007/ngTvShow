@@ -1,5 +1,5 @@
 angular.module('MyApp')
-    .directive('uniqueEmail', function($http) {
+    .directive('uniqueEmail', ['$http', function($http) {
         // 获取前台的值访问后台，对值进行比对判断是否唯一
         return {
             restrict: 'A',
@@ -24,4 +24,4 @@ angular.module('MyApp')
                 });
             }
         };
-    });
+    }]);
