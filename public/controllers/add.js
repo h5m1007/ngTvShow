@@ -2,10 +2,10 @@ angular.module('MyApp')
     .controller('AddCtrl', ['$scope', '$alert', 'Show', function($scope, $alert, Show) {
         $scope.addShow = function() {
             Show.save(
-            	// .save() 来自Show服务中$resource提供
-            	{
-            		showName: $scope.showName
-            	},
+                // .save() 来自Show服务中$resource提供
+                {
+                    showName: $scope.showName
+                },
                 function() {
                     $scope.showName = '';
                     $scope.addForm.$setPristine();

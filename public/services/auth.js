@@ -1,7 +1,7 @@
 angular.module('MyApp')
     .factory('Auth', ['$http', '$location', '$rootScope', '$cookieStore', '$alert', '$window',
         function($http, $location, $rootScope, $cookieStore, $alert, $window) {
-            // auth 身份认证
+            // Auth 身份认证
             // $rootScope.currentUser = $cookieStore.get('user');
             // $cookieStore.remove('user');
 
